@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<xml>
+	<ModInfo>
+		<Name value="UnlockOpenDoors" />
+		<Description value="Unlocks annoying locked open doors." />
+		<Author value="Dizor" />
+    <Website value="https://github.com/IDizor/7D2D-UnlockOpenDoors" />
+		<Version value="1.1" compat="A20"/>
+	</ModInfo>
+</xml>

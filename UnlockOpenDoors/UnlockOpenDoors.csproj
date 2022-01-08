@@ -66,7 +66,6 @@
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <PropertyGroup>
-    <PostBuildEvent>
-    </PostBuildEvent>
+    <PostBuildEvent>::copy /y "$(TargetPath)" "D:\Games\Steam\steamapps\common\7 Days To Die\Mods\$(TargetName)\"</PostBuildEvent>
   </PropertyGroup>
 </Project>
