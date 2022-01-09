@@ -69,71 +69,51 @@ public class UnlockOpenDoors : IModApi
     }
 
     /// <summary>
-    /// The Harmony patch for the method <see cref="PrefabInstance.ResetBlocksAndRebuild"/>.
+    /// The Harmony patch for the method <see cref="QuestEventManager.QuestLockPOI"/>.
     /// </summary>
-    [HarmonyPatch(typeof(PrefabInstance))]
-    [HarmonyPatch("ResetBlocksAndRebuild")]
-    public class PrefabInstance_ResetBlocksAndRebuild
+    [HarmonyPatch(typeof(QuestEventManager))]
+    [HarmonyPatch("QuestLockPOI")]
+    public class QuestEventManager_QuestLockPOI
     {
         /// <summary>
-        /// The additional code to execute before the original method <see cref="PrefabInstance.ResetBlocksAndRebuild"/>.
-        /// Removes all doors/hatches/gates before POI reset (when start quest).
-        /// It forces the game to create new doors with the correct locked state for closed doors that are supposed to be opened by a special key or switch.
-        /// </summary>
-        public static bool Prefix(World _world, PrefabInstance __instance)
-        {
-            HashSetLong hashSetLong = __instance.GetOccupiedChunks();
-            ChunkCluster chunkCluster = _world.ChunkClusters[0];
-            
-            foreach (long current in hashSetLong)
-            {
-                Chunk chunkSync = chunkCluster.GetChunkSync(current);
-                if (chunkSync != null)
-                {
-                    var list = chunkSync.GetTileEntities().list;
-                    for (int i = list.Count - 1; i >= 0; i--)
-                    {
-                        var tile = list[i];
-                        if (chunkSync.GetBlock(tile.localChunkPos).Block.HasTileEntity)
-                        {
-                            if (tile is TileEntitySecureDoor)
-                            {
-                                chunkSync.SetBlock(_world, tile.localChunkPos.x, tile.localChunkPos.y, tile.localChunkPos.z, BlockValue.Air, true, true);
-                            }
-                        }
-                    }
-                }
-            }
-
-            return true;
-        }
-
-        /// <summary>
-        /// The additional code to execute after the original method <see cref="PrefabInstance.ResetBlocksAndRebuild"/>.
+        /// The additional code to execute after the original method <see cref="QuestEventManager.QuestLockPOI"/>.
         /// After POI reset (when quest started) makes locked open doors/hatches/gates unlocked.
         /// </summary>
-        public static void Postfix(World _world, PrefabInstance __instance)
+        public static void Postfix(Vector3 prefabPos, QuestTags questTags)
         {
-            HashSetLong hashSetLong = __instance.GetOccupiedChunks();
-            ChunkCluster chunkCluster = _world.ChunkClusters[0];
+            var world = GameManager.Instance.World;
+            var prefabs = GameManager.Instance
+                .GetDynamicPrefabDecorator()
+                .GetPrefabsFromWorldPosInside((int)prefabPos.x, (int)prefabPos.y, (int)prefabPos.z, questTags);
 
-            foreach (long current in hashSetLong)
+            foreach (var prefab in prefabs)
             {
-                Chunk chunkSync = chunkCluster.GetChunkSync(current);
-                if (chunkSync != null)
+                HashSetLong hashSetLong = prefab.GetOccupiedChunks();
+                ChunkCluster chunkCluster = world.ChunkClusters[0];
+
+                foreach (long current in hashSetLong)
                 {
-                    var list = chunkSync.GetTileEntities().list;
-                    for (int i = list.Count - 1; i >= 0; i--)
+                    Chunk chunkSync = chunkCluster.GetChunkSync(current);
+                    if (chunkSync != null)
                     {
-                        var tile = list[i];
-                        if (chunkSync.GetBlock(tile.localChunkPos).Block.HasTileEntity)
+                        var list = chunkSync.GetTileEntities().list;
+                        for (int i = list.Count - 1; i >= 0; i--)
                         {
-                            if (tile is TileEntitySecureDoor door && door.GetOwner() == null)
+                            var tile = list[i];
+                            if (chunkSync.GetBlock(tile.localChunkPos).Block.HasTileEntity)
                             {
-                                if (door.IsLocked() && BlockDoor.IsDoorOpen(door.blockValue.meta))
+                                if (tile is TileEntitySecureDoor door && door.GetOwner() == null)
                                 {
-                                    door.SetLocked(false);
-                                    //Debug.LogErrorFormat($"Annoying door: {door.blockValue.Block?.GetBlockName()}, {door.ToWorldPos()}");
+                                    if (door.IsLocked() && BlockDoor.IsDoorOpen(door.blockValue.meta))
+                                    {
+                                        door.SetLocked(false);
+                                        //Debug.LogErrorFormat($"Annoying door: {door.blockValue.Block?.GetBlockName()}, {door.ToWorldPos()}");
+                                    }
+                                    else
+                                    {
+                                        // restore original locked state for previously opened doors with a special key or switch
+                                        door.SetLocked((door.blockValue.meta & 4) > 0);
+                                    }
                                 }
                             }
                         }
@@ -142,7 +122,7 @@ public class UnlockOpenDoors : IModApi
             }
         }
     }
-    
+
     /*
     [HarmonyPatch(typeof(TileEntitySecure))]
     [HarmonyPatch("IsUserAllowed")]
@@ -151,6 +131,20 @@ public class UnlockOpenDoors : IModApi
         public static void Postfix(TileEntitySecure __instance, System.Collections.Generic.List<PlatformUserIdentifierAbs> ___allowedUserIds, PlatformUserIdentifierAbs ___ownerID, ref bool __result)
         {
             if (__instance is TileEntitySecureDoor && ___ownerID == null && __instance.IsLocked())
+            {
+                __result = true;
+            }
+        }
+    }
+    */
+    /*
+    [HarmonyPatch(typeof(TileEntitySecure))]
+    [HarmonyPatch("LocalPlayerIsOwner")]
+    public class TileEntitySecure_IsUserAllowed
+    {
+        public static void Postfix(TileEntitySecure __instance, ref bool __result)
+        {
+            if (__instance is TileEntitySecureDoor)
             {
                 __result = true;
             }
