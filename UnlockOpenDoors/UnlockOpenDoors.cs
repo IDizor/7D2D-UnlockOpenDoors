@@ -20,29 +20,26 @@ public class UnlockOpenDoors : IModApi
     }
 
     /// <summary>
-    /// The Harmony patch for the method <see cref="TileEntity.OnReadComplete"/>.
+    /// The Harmony patch for the method <see cref="TileEntitySecure.SetLocked"/>.
     /// </summary>
-    [HarmonyPatch(typeof(TileEntity))]
-    [HarmonyPatch("OnReadComplete")]
-    public class TileEntity_OnReadComplete
+    [HarmonyPatch(typeof(TileEntitySecure))]
+    [HarmonyPatch("SetLocked")]
+    public class TileEntitySecure_SetLocked
     {
         /// <summary>
-        /// The additional code to execute after the original method <see cref="TileEntity.OnReadComplete"/>.
+        /// The additional code to execute after the original method <see cref="TileEntitySecure.SetLocked"/>.
         /// Makes locked open doors/hatches/gates unlocked.
         /// </summary>
-        public static void Postfix(TileEntity __instance)
+        public static void Postfix(TileEntitySecure __instance)
         {
-            if (__instance is TileEntitySecureDoor door && door.GetOwner() == null)
+            if (__instance.IsLocked() && __instance is TileEntitySecureDoor && __instance.GetOwner() == null && BlockDoor.IsDoorOpen(__instance.blockValue.meta))
             {
-                if (door.IsLocked() && BlockDoor.IsDoorOpen(door.blockValue.meta))
-                {
-                    door.SetLocked(false);
-                    //Debug.LogErrorFormat($"Annoying door: {door.blockValue.Block?.GetBlockName()}, {door.ToWorldPos()}");
-                }
+                //Debug.LogErrorFormat($"Annoying door: {__instance.blockValue.Block?.GetBlockName()}, {__instance.ToWorldPos()}");
+                __instance.SetLocked(false);
             }
         }
     }
-    
+
     /// <summary>
     /// The Harmony patch for the method <see cref="BlockDoorSecure.OnTriggered"/>.
     /// </summary>
@@ -59,7 +56,6 @@ public class UnlockOpenDoors : IModApi
             if (BlockDoor.IsDoorOpen(_blockValue.meta))
             {
                 var door = _world.GetTileEntity(_cIdx, _blockPos) as TileEntitySecureDoor;
-
                 if (door != null && door.IsLocked() && door.GetOwner() == null)
                 {
                     door.SetLocked(false);
@@ -77,7 +73,7 @@ public class UnlockOpenDoors : IModApi
     {
         /// <summary>
         /// The additional code to execute after the original method <see cref="QuestEventManager.QuestLockPOI"/>.
-        /// After POI reset (when quest started) makes locked open doors/hatches/gates unlocked.
+        /// Restores the initial locked state for previously opened doors with a special key or switch.
         /// </summary>
         public static void Postfix(Vector3 prefabPos, QuestTags questTags)
         {
@@ -104,16 +100,7 @@ public class UnlockOpenDoors : IModApi
                             {
                                 if (tile is TileEntitySecureDoor door && door.GetOwner() == null)
                                 {
-                                    if (door.IsLocked() && BlockDoor.IsDoorOpen(door.blockValue.meta))
-                                    {
-                                        door.SetLocked(false);
-                                        //Debug.LogErrorFormat($"Annoying door: {door.blockValue.Block?.GetBlockName()}, {door.ToWorldPos()}");
-                                    }
-                                    else
-                                    {
-                                        // restore original locked state for previously opened doors with a special key or switch
-                                        door.SetLocked((door.blockValue.meta & 4) > 0);
-                                    }
+                                    door.SetLocked((door.blockValue.meta & 4) > 0);
                                 }
                             }
                         }
