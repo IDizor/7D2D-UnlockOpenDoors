@@ -1,4 +1,5 @@
 ﻿using HarmonyLib;
+using System;
 using System.Collections.Generic;
 using System.Reflection;
 using UnityEngine;
@@ -34,8 +35,32 @@ public class UnlockOpenDoors : IModApi
         {
             if (__instance.IsLocked() && __instance is TileEntitySecureDoor && __instance.GetOwner() == null && BlockDoor.IsDoorOpen(__instance.blockValue.meta))
             {
-                //Debug.LogErrorFormat($"Annoying door: {__instance.blockValue.Block?.GetBlockName()}, {__instance.ToWorldPos()}");
+                //Debug.LogErrorFormat($"(SetLocked) Annoying door: {__instance.blockValue.Block?.GetBlockName()}, Position: {ToCompasPos(__instance.ToWorldPos())}");
                 __instance.SetLocked(false);
+            }
+        }
+    }
+
+    /// <summary>
+    /// The Harmony patch for the method <see cref="TileEntity.OnReadComplete"/>.
+    /// </summary>
+    [HarmonyPatch(typeof(TileEntity))]
+    [HarmonyPatch("OnReadComplete")]
+    public class TileEntity_OnReadComplete
+    {
+        /// <summary>
+        /// The additional code to execute after the original method <see cref="TileEntity.OnReadComplete"/>.
+        /// Makes locked open doors/hatches/gates unlocked (for already discovered doors).
+        /// </summary>
+        public static void Postfix(TileEntity __instance)
+        {
+            if (__instance is TileEntitySecureDoor door && door.IsLocked())
+            {
+                if (BlockDoor.IsDoorOpen(door.blockValue.meta) && door.GetOwner() == null)
+                {
+                    //Debug.LogErrorFormat($"(OnReadComplete) Annoying door: {door.blockValue.Block?.GetBlockName()}, Position: {ToCompasPos(door.ToWorldPos())}");
+                    door.SetLocked(false);
+                }
             }
         }
     }
@@ -108,6 +133,16 @@ public class UnlockOpenDoors : IModApi
                 }
             }
         }
+    }
+
+    /// <summary>
+    /// Makes world position user frienrly in N/S/W/E coordinates + height.
+    /// </summary>
+    /// <param name="p"></param>
+    /// <returns></returns>
+    private static string ToCompasPos(Vector3i p)
+    {
+        return (Math.Abs(p.x).ToString() + (p.x > 0 ? "E" : "W")) + ", " + (Math.Abs(p.z).ToString() + (p.z > 0 ? "N" : "S")) + ", " + p.y.ToString() + "h";
     }
 
     /*
