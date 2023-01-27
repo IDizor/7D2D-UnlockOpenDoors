@@ -105,7 +105,7 @@ public class UnlockOpenDoors : IModApi
             var world = GameManager.Instance.World;
             var prefabs = GameManager.Instance
                 .GetDynamicPrefabDecorator()
-                .GetPrefabsFromWorldPosInside((int)prefabPos.x, (int)prefabPos.y, (int)prefabPos.z, questTags);
+                .GetPrefabsFromWorldPosInside(prefabPos, questTags);
 
             foreach (var prefab in prefabs)
             {
