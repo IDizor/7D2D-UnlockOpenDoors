@@ -21,16 +21,12 @@ public class UnlockOpenDoors : IModApi
     }
 
     /// <summary>
-    /// The Harmony patch for the method <see cref="TileEntitySecure.SetLocked"/>.
+    /// Makes locked open doors/hatches/gates unlocked.
     /// </summary>
     [HarmonyPatch(typeof(TileEntitySecure))]
     [HarmonyPatch("SetLocked")]
     public class TileEntitySecure_SetLocked
     {
-        /// <summary>
-        /// The additional code to execute after the original method <see cref="TileEntitySecure.SetLocked"/>.
-        /// Makes locked open doors/hatches/gates unlocked.
-        /// </summary>
         public static void Postfix(TileEntitySecure __instance)
         {
             if (__instance.IsLocked() && __instance is TileEntitySecureDoor && __instance.GetOwner() == null && BlockDoor.IsDoorOpen(__instance.blockValue.meta))
@@ -42,16 +38,12 @@ public class UnlockOpenDoors : IModApi
     }
 
     /// <summary>
-    /// The Harmony patch for the method <see cref="TileEntity.OnReadComplete"/>.
+    /// Makes locked open doors/hatches/gates unlocked (for already discovered doors).
     /// </summary>
     [HarmonyPatch(typeof(TileEntity))]
     [HarmonyPatch("OnReadComplete")]
     public class TileEntity_OnReadComplete
     {
-        /// <summary>
-        /// The additional code to execute after the original method <see cref="TileEntity.OnReadComplete"/>.
-        /// Makes locked open doors/hatches/gates unlocked (for already discovered doors).
-        /// </summary>
         public static void Postfix(TileEntity __instance)
         {
             if (__instance is TileEntitySecureDoor door && door.IsLocked())
@@ -66,16 +58,12 @@ public class UnlockOpenDoors : IModApi
     }
 
     /// <summary>
-    /// The Harmony patch for the method <see cref="BlockDoorSecure.OnTriggered"/>.
+    /// Unlocks door/hatch/gates in case it was opened by a key or switch.
     /// </summary>
     [HarmonyPatch(typeof(BlockDoorSecure))]
     [HarmonyPatch("OnTriggered")]
     public class BlockDoorSecure_OnTriggered
     {
-        /// <summary>
-        /// The additional code to execute after the original method <see cref="BlockDoorSecure.OnTriggered"/>.
-        /// Unlocks door/hatch/gates in case it was opened by key or switch.
-        /// </summary>
         public static void Postfix(WorldBase _world, int _cIdx, Vector3i _blockPos, BlockValue _blockValue)
         {
             if (BlockDoor.IsDoorOpen(_blockValue.meta))
@@ -90,17 +78,13 @@ public class UnlockOpenDoors : IModApi
     }
 
     /// <summary>
-    /// The Harmony patch for the method <see cref="QuestEventManager.QuestLockPOI"/>.
+    /// Restores the initial locked state for previously opened doors with a special key or switch.
     /// </summary>
     [HarmonyPatch(typeof(QuestEventManager))]
     [HarmonyPatch("QuestLockPOI")]
     public class QuestEventManager_QuestLockPOI
     {
-        /// <summary>
-        /// The additional code to execute after the original method <see cref="QuestEventManager.QuestLockPOI"/>.
-        /// Restores the initial locked state for previously opened doors with a special key or switch.
-        /// </summary>
-        public static void Postfix(Vector3 prefabPos, QuestTags questTags)
+        public static void Postfix(Vector3 prefabPos, FastTags questTags)
         {
             var world = GameManager.Instance.World;
             var prefabs = GameManager.Instance
@@ -138,8 +122,6 @@ public class UnlockOpenDoors : IModApi
     /// <summary>
     /// Makes world position user frienrly in N/S/W/E coordinates + height.
     /// </summary>
-    /// <param name="p"></param>
-    /// <returns></returns>
     private static string ToCompasPos(Vector3i p)
     {
         return (Math.Abs(p.x).ToString() + (p.x > 0 ? "E" : "W")) + ", " + (Math.Abs(p.z).ToString() + (p.z > 0 ? "N" : "S")) + ", " + p.y.ToString() + "h";
