@@ -1,7 +1,7 @@
-﻿using HarmonyLib;
-using System;
-using System.Collections.Generic;
+﻿using System;
 using System.Reflection;
+using HarmonyLib;
+using UniLinq;
 using UnityEngine;
 
 /// <summary>
@@ -27,12 +27,12 @@ public class UnlockOpenDoors : IModApi
     [HarmonyPatch("SetLocked")]
     public class TileEntitySecure_SetLocked
     {
-        public static void Postfix(TileEntitySecure __instance)
+        public static void Prefix(TileEntitySecure __instance, ref bool _isLocked)
         {
-            if (__instance.IsLocked() && __instance is TileEntitySecureDoor && __instance.GetOwner() == null && BlockDoor.IsDoorOpen(__instance.blockValue.meta))
+            if (_isLocked && __instance is TileEntitySecureDoor && __instance.GetOwner() == null && BlockDoor.IsDoorOpen(__instance.blockValue.meta))
             {
-                //Debug.LogErrorFormat($"(SetLocked) Annoying door: {__instance.blockValue.Block?.GetBlockName()}, Position: {ToCompasPos(__instance.ToWorldPos())}");
-                __instance.SetLocked(false);
+                //Debug.LogError($"(SetLocked) Annoying door: {__instance.blockValue.Block?.GetBlockName()}, Position: {ToCompasPos(__instance.ToWorldPos())}");
+                _isLocked = false;
             }
         }
     }
@@ -58,7 +58,7 @@ public class UnlockOpenDoors : IModApi
     }
 
     /// <summary>
-    /// Unlocks door/hatch/gates in case it was opened by a key or switch.
+    /// Unlocks door/hatch/gates opened by a key or switch.
     /// </summary>
     [HarmonyPatch(typeof(BlockDoorSecure))]
     [HarmonyPatch("OnTriggered")]
@@ -78,81 +78,34 @@ public class UnlockOpenDoors : IModApi
     }
 
     /// <summary>
-    /// Restores the initial locked state for previously opened doors with a special key or switch.
+    /// Restores the initial locked state for closed doors during TileEntity/POI reset.
     /// </summary>
-    [HarmonyPatch(typeof(QuestEventManager))]
-    [HarmonyPatch("QuestLockPOI")]
-    public class QuestEventManager_QuestLockPOI
+    [HarmonyPatch(typeof(TileEntityLootContainer))]
+    [HarmonyPatch("Reset")]
+    public class TileEntityLootContainer_Reset
     {
-        public static void Postfix(Vector3 prefabPos, FastTags questTags)
+        public static void Postfix(TileEntityLootContainer __instance)
         {
-            var world = GameManager.Instance.World;
-            var prefabs = GameManager.Instance
-                .GetDynamicPrefabDecorator()
-                .GetPrefabsFromWorldPosInside(prefabPos, questTags);
-
-            foreach (var prefab in prefabs)
+            if (__instance is TileEntitySecureDoor door && door.GetOwner() == null && !BlockDoor.IsDoorOpen(door.blockValue.meta))
             {
-                HashSetLong hashSetLong = prefab.GetOccupiedChunks();
-                ChunkCluster chunkCluster = world.ChunkClusters[0];
-
-                foreach (long current in hashSetLong)
-                {
-                    Chunk chunkSync = chunkCluster.GetChunkSync(current);
-                    if (chunkSync != null)
-                    {
-                        var list = chunkSync.GetTileEntities().list;
-                        for (int i = list.Count - 1; i >= 0; i--)
-                        {
-                            var tile = list[i];
-                            if (chunkSync.GetBlock(tile.localChunkPos).Block.HasTileEntity)
-                            {
-                                if (tile is TileEntitySecureDoor door && door.GetOwner() == null)
-                                {
-                                    door.SetLocked((door.blockValue.meta & 4) > 0);
-                                }
-                            }
-                        }
-                    }
-                }
+                door.SetLocked((door.blockValue.meta & 4) > 0);
             }
         }
     }
 
-    /// <summary>
-    /// Makes world position user frienrly in N/S/W/E coordinates + height.
-    /// </summary>
     private static string ToCompasPos(Vector3i p)
     {
         return (Math.Abs(p.x).ToString() + (p.x > 0 ? "E" : "W")) + ", " + (Math.Abs(p.z).ToString() + (p.z > 0 ? "N" : "S")) + ", " + p.y.ToString() + "h";
     }
 
-    /*
-    [HarmonyPatch(typeof(TileEntitySecure))]
-    [HarmonyPatch("IsUserAllowed")]
-    public class TileEntitySecure_IsUserAllowed
+    private static string GetCallStackPath(int limit = 5)
     {
-        public static void Postfix(TileEntitySecure __instance, System.Collections.Generic.List<PlatformUserIdentifierAbs> ___allowedUserIds, PlatformUserIdentifierAbs ___ownerID, ref bool __result)
-        {
-            if (__instance is TileEntitySecureDoor && ___ownerID == null && __instance.IsLocked())
-            {
-                __result = true;
-            }
-        }
+        var stackTrace = new System.Diagnostics.StackTrace();
+        var path = string.Join(" <-- ", stackTrace.GetFrames()
+            .Skip(3)
+            .Take(limit)
+            .Select(f => f.GetMethod())
+            .Select(m => m.DeclaringType.Name + "." + m.Name + "()"));
+        return path;
     }
-    */
-    /*
-    [HarmonyPatch(typeof(TileEntitySecure))]
-    [HarmonyPatch("LocalPlayerIsOwner")]
-    public class TileEntitySecure_IsUserAllowed
-    {
-        public static void Postfix(TileEntitySecure __instance, ref bool __result)
-        {
-            if (__instance is TileEntitySecureDoor)
-            {
-                __result = true;
-            }
-        }
-    }
-    */
 }
