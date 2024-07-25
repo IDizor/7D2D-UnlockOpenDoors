@@ -24,8 +24,8 @@ public class UnlockOpenDoors : IModApi
     /// Makes locked open doors/hatches/gates unlocked.
     /// </summary>
     [HarmonyPatch(typeof(TileEntitySecure))]
-    [HarmonyPatch("SetLocked")]
-    public class TileEntitySecure_SetLocked
+    [HarmonyPatch(nameof(TileEntitySecure.SetLocked))]
+    public static class TileEntitySecure_SetLocked
     {
         public static void Prefix(TileEntitySecure __instance, ref bool _isLocked)
         {
@@ -41,8 +41,8 @@ public class UnlockOpenDoors : IModApi
     /// Makes locked open doors/hatches/gates unlocked (for already discovered doors).
     /// </summary>
     [HarmonyPatch(typeof(TileEntity))]
-    [HarmonyPatch("OnReadComplete")]
-    public class TileEntity_OnReadComplete
+    [HarmonyPatch(nameof(TileEntity.OnReadComplete))]
+    public static class TileEntity_OnReadComplete
     {
         public static void Postfix(TileEntity __instance)
         {
@@ -61,8 +61,8 @@ public class UnlockOpenDoors : IModApi
     /// Unlocks door/hatch/gates opened by a key or switch.
     /// </summary>
     [HarmonyPatch(typeof(BlockDoorSecure))]
-    [HarmonyPatch("OnTriggered")]
-    public class BlockDoorSecure_OnTriggered
+    [HarmonyPatch(nameof(BlockDoorSecure.OnTriggered))]
+    public static class BlockDoorSecure_OnTriggered
     {
         public static void Postfix(WorldBase _world, int _cIdx, Vector3i _blockPos, BlockValue _blockValue)
         {
@@ -81,8 +81,8 @@ public class UnlockOpenDoors : IModApi
     /// Restores the initial locked state for closed doors during TileEntity/POI reset.
     /// </summary>
     [HarmonyPatch(typeof(TileEntityLootContainer))]
-    [HarmonyPatch("Reset")]
-    public class TileEntityLootContainer_Reset
+    [HarmonyPatch(nameof(TileEntityLootContainer.Reset))]
+    public static class TileEntityLootContainer_Reset
     {
         public static void Postfix(TileEntityLootContainer __instance)
         {
