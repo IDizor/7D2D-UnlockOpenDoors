@@ -9,30 +9,33 @@ using UnityEngine;
 /// </summary>
 public class UnlockOpenDoors : IModApi
 {
-    /// <summary>
-    /// Mod initialization.
-    /// </summary>
-    /// <param name="_modInstance"></param>
     public void InitMod(Mod _modInstance)
     {
-        Debug.Log("Loading mod: " + GetType().ToString());
         var harmony = new Harmony(GetType().ToString());
         harmony.PatchAll(Assembly.GetExecutingAssembly());
+    }
+
+    public static bool IsDoorOpen(byte _metadata)
+    {
+        return (_metadata & 1) != 0;
     }
 
     /// <summary>
     /// Makes locked open doors/hatches/gates unlocked.
     /// </summary>
-    [HarmonyPatch(typeof(TileEntitySecure))]
-    [HarmonyPatch(nameof(TileEntitySecure.SetLocked))]
-    public static class TileEntitySecure_SetLocked
+    [HarmonyPatch(typeof(TEFeatureLockable))]
+    [HarmonyPatch(nameof(TEFeatureLockable.SetLocked))]
+    public static class TEFeatureLockable_SetLocked
     {
-        public static void Prefix(TileEntitySecure __instance, ref bool _isLocked)
+        public static void Prefix(TEFeatureLockable __instance, ref bool _isLocked)
         {
-            if (_isLocked && __instance is TileEntitySecureDoor && __instance.GetOwner() == null && BlockDoor.IsDoorOpen(__instance.blockValue.meta))
+            if (_isLocked)
             {
-                //Debug.LogError($"(SetLocked) Annoying door: {__instance.blockValue.Block?.GetBlockName()}, Position: {ToCompasPos(__instance.ToWorldPos())}");
-                _isLocked = false;
+                if (__instance.TryGetSelfOrFeature<TEFeatureDoor>(out var _) && IsDoorOpen(__instance.blockValue.meta))
+                {
+                    //Debug.LogError($"(SetLocked) Annoying door: {__instance.blockValue.Block.GetBlockName()}, Position: {ToCompasPos(__instance.ToWorldPos())}");
+                    _isLocked = false;
+                }
             }
         }
     }
@@ -46,12 +49,12 @@ public class UnlockOpenDoors : IModApi
     {
         public static void Postfix(TileEntity __instance)
         {
-            if (__instance is TileEntitySecureDoor door && door.IsLocked())
+            if (__instance.TryGetSelfOrFeature<TEFeatureDoor>(out var door) && door.lockFeature != null && door.lockFeature.IsLocked())
             {
-                if (BlockDoor.IsDoorOpen(door.blockValue.meta) && door.GetOwner() == null)
+                if (IsDoorOpen(__instance.blockValue.meta) && door.lockFeature.GetOwner() == null)
                 {
-                    //Debug.LogErrorFormat($"(OnReadComplete) Annoying door: {door.blockValue.Block?.GetBlockName()}, Position: {ToCompasPos(door.ToWorldPos())}");
-                    door.SetLocked(false);
+                    //Debug.LogErrorFormat($"(OnReadComplete) Annoying door: {__instance.blockValue.Block.GetBlockName()}, Position: {ToCompasPos(door.ToWorldPos())}");
+                    door.lockFeature.SetLocked(false);
                 }
             }
         }
@@ -60,18 +63,18 @@ public class UnlockOpenDoors : IModApi
     /// <summary>
     /// Unlocks door/hatch/gates opened by a key or switch.
     /// </summary>
-    [HarmonyPatch(typeof(BlockDoorSecure))]
-    [HarmonyPatch(nameof(BlockDoorSecure.OnTriggered))]
-    public static class BlockDoorSecure_OnTriggered
+    [HarmonyPatch(typeof(TEFeatureLockable))]
+    [HarmonyPatch(nameof(TEFeatureLockable.OnBlockTriggered))]
+    public static class TEFeatureLockablee_OnBlockTriggered
     {
-        public static void Postfix(WorldBase _world, int _cIdx, Vector3i _blockPos, BlockValue _blockValue)
+        public static void Postfix(TEFeatureLockable __instance, BlockValue _blockValue)
         {
-            if (BlockDoor.IsDoorOpen(_blockValue.meta))
+            if (IsDoorOpen(_blockValue.meta) && __instance.TryGetSelfOrFeature<TEFeatureDoor>(out var _))
             {
-                var door = _world.GetTileEntity(_cIdx, _blockPos) as TileEntitySecureDoor;
-                if (door != null && door.IsLocked() && door.GetOwner() == null)
+                if (__instance.IsLocked() && __instance.GetOwner() == null)
                 {
-                    door.SetLocked(false);
+                    //Debug.LogErrorFormat($"(OnBlockTriggered) Annoying door: {__instance.blockValue.Block.GetBlockName()}, Position: {ToCompasPos(__instance.ToWorldPos())}");
+                    __instance.SetLocked(false);
                 }
             }
         }
@@ -80,15 +83,16 @@ public class UnlockOpenDoors : IModApi
     /// <summary>
     /// Restores the initial locked state for closed doors during TileEntity/POI reset.
     /// </summary>
-    [HarmonyPatch(typeof(TileEntityLootContainer))]
-    [HarmonyPatch(nameof(TileEntityLootContainer.Reset))]
-    public static class TileEntityLootContainer_Reset
+    [HarmonyPatch(typeof(TEFeatureDoor))]
+    [HarmonyPatch(nameof(TEFeatureDoor.OnBlockReset))]
+    public static class TEFeatureDoor_OnBlockReset
     {
-        public static void Postfix(TileEntityLootContainer __instance)
+        public static void Postfix(TEFeatureDoor __instance)
         {
-            if (__instance is TileEntitySecureDoor door && door.GetOwner() == null && !BlockDoor.IsDoorOpen(door.blockValue.meta))
+            if (__instance.lockFeature != null && __instance.lockFeature.GetOwner() == null && !IsDoorOpen(__instance.blockValue.meta))
             {
-                door.SetLocked((door.blockValue.meta & 4) > 0);
+                //Debug.LogErrorFormat($"(OnBlockReset) Annoying door: {__instance.blockValue.Block.GetBlockName()}, Position: {ToCompasPos(__instance.ToWorldPos())}");
+                __instance.lockFeature.SetLocked((__instance.blockValue.meta & 4) > 0);
             }
         }
     }
