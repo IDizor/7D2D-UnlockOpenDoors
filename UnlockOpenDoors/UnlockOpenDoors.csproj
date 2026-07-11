@@ -10,7 +10,7 @@
     <RootNamespace>UnlockOpenDoors</RootNamespace>
     <AssemblyName>UnlockOpenDoors</AssemblyName>
     <TargetFrameworkVersion>v4.8</TargetFrameworkVersion>
-    <LangVersion>11.0</LangVersion>
+    <LangVersion>12.0</LangVersion>
     <FileAlignment>512</FileAlignment>
     <Deterministic>true</Deterministic>
     <TargetFrameworkProfile />
@@ -63,6 +63,7 @@
     </Reference>
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="Helper.cs" />
     <Compile Include="UnlockOpenDoors.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
