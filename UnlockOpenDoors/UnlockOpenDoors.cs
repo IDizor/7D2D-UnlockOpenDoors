@@ -82,7 +82,7 @@ namespace UnlockOpenDoors
                     {
                         if (composite.TryGetSelfOrFeature(out TEFeatureDoor door) && door.IsOpen() && door.lockFeature != null && door.lockFeature.IsLocked())
                         {
-                            door.lockFeature.SetLocked(false);
+                            door.lockFeature.locked = false;
                         }
                     }
                 }
